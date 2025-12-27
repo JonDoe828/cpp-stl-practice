@@ -1,9 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
-#include <sstream>
 
 #include "vector.hpp"
-
-TEST_CASE("vector default") { REQUIRE(1 == 1); }
 
 TEST_CASE("MyVector basic push and size") {
   MyVector v;
