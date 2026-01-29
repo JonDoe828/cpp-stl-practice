@@ -89,3 +89,98 @@ TEST_CASE("MyVector foreach traversal") {
     expected += 10;
   }
 }
+
+TEST_CASE("MyVector iterator equality comparison") {
+  MyVector<int> v;
+  v.push(1);
+  v.push(2);
+
+  auto it1 = v.begin();
+  auto it2 = v.begin();
+  auto it3 = v.end();
+
+  REQUIRE(it1 == it2);
+  REQUIRE_FALSE(it1 != it2);
+
+  REQUIRE(it1 != it3);
+  REQUIRE_FALSE(it1 == it3);
+}
+
+TEST_CASE("MyVector iterator ordering comparison") {
+  MyVector<int> v;
+  v.push(10);
+  v.push(20);
+  v.push(30);
+
+  auto it0 = v.begin();
+  auto it1 = it0 + 1;
+  auto it2 = it0 + 2;
+
+  REQUIRE(it0 < it1);
+  REQUIRE(it1 < it2);
+
+  REQUIRE(it2 > it1);
+  REQUIRE(it1 > it0);
+}
+
+TEST_CASE("MyVector iterator <= >= comparison") {
+  MyVector<int> v;
+  v.push(5);
+  v.push(6);
+
+  auto it0 = v.begin();
+  auto it1 = it0 + 1;
+
+  REQUIRE(it0 <= it0);
+  REQUIRE(it0 <= it1);
+  REQUIRE(it1 >= it1);
+  REQUIRE(it1 >= it0);
+}
+
+TEST_CASE("MyVector iterator difference") {
+  MyVector<int> v;
+  v.push(1);
+  v.push(2);
+  v.push(3);
+  v.push(4);
+
+  auto it0 = v.begin();
+  auto it2 = it0 + 2;
+  auto it4 = v.end();
+
+  REQUIRE(it2 - it0 == 2);
+  REQUIRE(it4 - it0 == 4);
+  REQUIRE(it0 - it2 == -2);
+}
+
+TEST_CASE("MyVector iterator comparison during traversal") {
+  MyVector<int> v;
+  v.push(10);
+  v.push(20);
+  v.push(30);
+
+  auto it = v.begin();
+  auto end = v.end();
+
+  int expected = 10;
+  for (; it != end; ++it) {
+    REQUIRE(*it == expected);
+    expected += 10;
+  }
+
+  REQUIRE(it == end);
+}
+
+TEST_CASE("MyVector const_iterator comparison") {
+  MyVector<int> v;
+  v.push(1);
+  v.push(2);
+
+  const MyVector<int> &cv = v;
+
+  auto it1 = cv.begin();
+  auto it2 = cv.begin();
+
+  REQUIRE(it1 == it2);
+  REQUIRE_FALSE(it1 != it2);
+}

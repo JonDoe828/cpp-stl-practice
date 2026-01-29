@@ -168,8 +168,17 @@ public:
     reference operator*() const noexcept { return *ptr_; }
     pointer operator->() const noexcept { return ptr_; }
 
-    iterator operator+() const {}
-    iterator operator-() const {}
+    iterator operator+(difference_type n) const noexcept {
+      return iterator(ptr_ + n);
+    }
+    iterator operator-(difference_type n) const noexcept {
+      return iterator(ptr_ - n);
+    }
+
+    friend difference_type operator-(const iterator &a,
+                                     const iterator &b) noexcept {
+      return a.ptr_ - b.ptr_;
+    }
 
     iterator &operator++() noexcept {
       ++ptr_;
@@ -181,11 +190,11 @@ public:
       return tmp;
     }
 
-    iterator &operator--() {
+    iterator &operator--() noexcept {
       --ptr_;
       return *this;
     }
-    iterator operator--(int) {
+    iterator operator--(int) noexcept {
       iterator tmp(*this);
       --(*this);
       return tmp;
@@ -215,11 +224,43 @@ public:
     using pointer = const value_type *;
     using reference = const value_type &;
 
-    reference operator*() const noexcept { return *ptr_; }
-    reference operator->() const noexcept { return &ptr_; }
-
     const_iterator() noexcept : ptr_(nullptr) {}
     explicit const_iterator(pointer p) noexcept : ptr_(p) {}
+
+    reference operator*() const noexcept { return *ptr_; }
+    pointer operator->() const noexcept { return ptr_; }
+
+    const_iterator &operator++() noexcept {
+      ++ptr_;
+      return *this;
+    }
+    const_iterator operator++(int) noexcept {
+      const_iterator tmp(*this);
+      ++(*this);
+      return tmp;
+    }
+    const_iterator &operator--() noexcept {
+      --ptr_;
+      return *this;
+    }
+    const_iterator operator--(int) noexcept {
+      const_iterator tmp(*this);
+      --(*this);
+      return tmp;
+    }
+
+    const_iterator operator+(difference_type n) const noexcept {
+      return const_iterator(ptr_ + n);
+    }
+    const_iterator operator-(difference_type n) const noexcept {
+      return const_iterator(ptr_ - n);
+    }
+
+    difference_type operator-(const const_iterator &other) const noexcept {
+      return ptr_ - other.ptr_;
+    }
+
+    reference operator[](difference_type n) const noexcept { return ptr_[n]; }
 
     auto operator<=>(const const_iterator &) const = default;
 
@@ -228,17 +269,22 @@ public:
   };
 
   // 迭代器 interface
-  using iterator = iterator;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  iterator begin() noexcept { return elements.get(); };
-  iterator end() noexcept { return elements.get() + size_; };
+  iterator begin() noexcept { return iterator(elements.get()); };
+  iterator end() noexcept { return iterator(elements.get() + size_); };
 
-  const_iterator begin() const noexcept { return elements.get(); }
-  const_iterator end() const noexcept { return elements.get() + size_; }
+  const_iterator begin() const noexcept {
+    return const_iterator(elements.get());
+  }
+  const_iterator end() const noexcept {
+    return const_iterator(elements.get() + size_);
+  }
 
-  const_iterator cbegin() const noexcept { return begin(); }
-  const_iterator cend() const noexcept { return cend(); }
+  const_iterator cbegin() const noexcept {
+    return const_iterator(elements.get());
+  }
+  const_iterator cend() const noexcept { return end(); }
 
   const_reverse_iterator crbegin() const noexcept {
     return const_reverse_iterator(end());
