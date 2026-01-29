@@ -3,7 +3,7 @@
 #include "vector.hpp"
 
 TEST_CASE("MyVector basic push and size") {
-  MyVector v;
+  MyVector<int> v;
   REQUIRE(v.size() == 0);
 
   v.push(10);
@@ -17,7 +17,7 @@ TEST_CASE("MyVector basic push and size") {
 }
 
 TEST_CASE("MyVector get with invalid index") {
-  MyVector v;
+  MyVector<int> v;
   v.push(10);
 
   REQUIRE(v.get(-1) == -1);
@@ -25,7 +25,7 @@ TEST_CASE("MyVector get with invalid index") {
 }
 
 TEST_CASE("MyVector insert at arbitrary position") {
-  MyVector v;
+  MyVector<int> v;
   v.push(20);
   v.push(30);
   v.push(40);
@@ -40,7 +40,7 @@ TEST_CASE("MyVector insert at arbitrary position") {
 }
 
 TEST_CASE("MyVector pop removes last element") {
-  MyVector v;
+  MyVector<int> v;
   v.push(10);
   v.push(20);
   v.push(30);
@@ -53,7 +53,7 @@ TEST_CASE("MyVector pop removes last element") {
 }
 
 TEST_CASE("MyVector clear resets vector") {
-  MyVector v;
+  MyVector<int> v;
   v.push(1);
   v.push(2);
   v.push(3);
@@ -65,7 +65,7 @@ TEST_CASE("MyVector clear resets vector") {
 }
 
 TEST_CASE("MyVector iterator traversal") {
-  MyVector v;
+  MyVector<int> v;
   v.push(10);
   v.push(20);
   v.push(30);
@@ -78,7 +78,7 @@ TEST_CASE("MyVector iterator traversal") {
 }
 
 TEST_CASE("MyVector foreach traversal") {
-  MyVector v;
+  MyVector<int> v;
   v.push(10);
   v.push(20);
   v.push(30);

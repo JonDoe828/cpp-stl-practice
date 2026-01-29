@@ -1,12 +1,15 @@
 #include <algorithm>
 #include <cstddef>
+#include <iostream>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
-class MyVector {
+template <typename T> class MyVector {
 private:
-  std::unique_ptr<int[]> elements; // 指向动态数组的指针
-  size_t capacity_;                // 数组的容量
+  std::unique_ptr<T[]> elements; // 指向动态数组的指针
+  size_t capacity_;              // 数组的容量
   size_t size_;
 
   // 扩展数组容量
@@ -14,9 +17,9 @@ private:
     if (new_cap <= capacity_)
       return;
 
-    auto new_buf = std::make_unique<int[]>(new_cap);
+    auto new_buf = std::make_unique<T[]>(new_cap);
 
-    for (size_t i = 0; i < size_; ++i) {
+    for (std::size_t i = 0; i < size_; ++i) {
       new_buf[i] = elements[i];
     }
 
@@ -32,7 +35,17 @@ private:
 
 public:
   // 构造函数
+  // default user provied constructor
   MyVector() : elements(nullptr), capacity_(0), size_(0) {};
+
+  MyVector(std::initializer_list<T> ilist)
+      : elements(std::make_unique<T[]>(ilist.size())), size_(ilist.size()),
+        capacity_(ilist.size()) {
+    std::size_t i = 0;
+    for (const auto &elem : ilist) {
+      elements[i++] = elem;
+    }
+  };
 
   // 析构函数
   ~MyVector() = default;
@@ -41,7 +54,7 @@ public:
   MyVector(const MyVector &other)
       : size_(other.size_), capacity_(other.capacity_) {
     if (capacity_ > 0) {
-      elements = std::make_unique<int[]>(capacity_);
+      elements = std::make_unique<T[]>(capacity_);
       std::copy(other.elements.get(), other.elements.get() + size_,
                 elements.get());
     }
@@ -57,8 +70,29 @@ public:
     return *this;
   }
 
-  // 添加元素到数组末尾
-  void push(const int &value) {
+  // Move constructor
+  MyVector(MyVector &&other) noexcept
+      : elements(std::exchange(other.elements, std::unique_ptr<T[]>{})),
+        size_(std::exchange(other.size_, 0)),
+        capacity_(std::exchange(other.capacity_, 0)) {}
+
+  // Move assignment
+  MyVector &operator=(MyVector &&other) {
+    if (this == other)
+      return *this;
+
+    elements.reset();
+    elements = std::exchange(other.elements, std::unique_ptr<T[]>{});
+    size_ = std::exchange(other.size_, 0);
+    capacity_ = std::exchange(other.capacity_, 0);
+    return *this;
+  }
+  T &operator[](std::size_t pos) { return elements[pos]; }
+  const T &operator[](std::size_t pos) const { return elements[pos]; }
+
+  // member function
+  //  添加元素到数组末尾
+  void push(const T &value) {
     if (size_ == capacity_) {
       // 如果数组已满，扩展容量
       reserve(capacity_ == 0 ? 1 : 2 * capacity_);
@@ -74,7 +108,7 @@ public:
   };
 
   // 在指定位置插入元素
-  void insert(size_t index, const int &value) {
+  void insert(size_t index, const T &value) {
     if (index > size_) {
       throw std::out_of_range("Index out of range");
     }
@@ -91,7 +125,7 @@ public:
   void clear() { size_ = 0; }
 
   // 添加元素到数组末尾
-  void push_back(const int &value) {
+  void push_back(const T &value) {
     if (size_ == capacity_) {
       // 如果数组已满，扩展容量
       reserve(capacity_ == 0 ? 1 : 2 * capacity_);
@@ -112,15 +146,104 @@ public:
     return elements[index];
   };
 
-  // 迭代器
-  // 使用迭代器遍历数组的开始位置
-  int *begin() { return elements.get(); };
-  // 使用迭代器遍历数组的结束位置
-  int *end() { return elements.get() + size_; };
+  // 打印数组中的元素
+  void printElements() const {
+    for (size_t i = 0; i < size_; ++i) {
+      std::cout << elements[i] << " ";
+    }
+    std::cout << std::endl;
+  }
 
-  // 使用迭代器遍历数组的开始位置（const版本）
-  const int *begin() const { return elements.get(); }
+  class iterator {
+  public:
+    using iterator_category = std::random_access_iterator_tag;
+    using difference_type = std::ptrdiff_t;
+    using value_type = T;
+    using pointer = value_type *;
+    using reference = value_type &;
 
-  // 使用迭代器遍历数组的结束位置（const版本）
-  const int *end() const { return elements.get() + size_; }
+    iterator() noexcept : ptr_(nullptr) {}
+    explicit iterator(pointer p) noexcept : ptr_(p) {}
+
+    reference operator*() const noexcept { return *ptr_; }
+    pointer operator->() const noexcept { return ptr_; }
+
+    iterator operator+() const {}
+    iterator operator-() const {}
+
+    iterator &operator++() noexcept {
+      ++ptr_;
+      return *this;
+    }
+    iterator operator++(int) noexcept {
+      iterator tmp(*this);
+      ++(*this);
+      return tmp;
+    }
+
+    iterator &operator--() {
+      --ptr_;
+      return *this;
+    }
+    iterator operator--(int) {
+      iterator tmp(*this);
+      --(*this);
+      return tmp;
+    }
+
+    reference operator[](difference_type n) const noexcept { return ptr_[n]; }
+
+    // friend bool operator==(const iterator &a, const iterator &b) {}
+    // friend bool operator!=(const iterator &a, const iterator &b) {}
+
+    // friend bool operator<(const iterator &a, const iterator &b) {}
+    // friend bool operator>(const iterator &a, const iterator &b) {}
+    // friend bool operator<=(const iterator &a, const iterator &b) {}
+    // friend bool operator>=(const iterator &a, const iterator &b) {}
+
+    auto operator<=>(const iterator &) const = default;
+
+  private:
+    pointer ptr_;
+  };
+
+  class const_iterator {
+  public:
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = T;
+    using difference_type = std::ptrdiff_t;
+    using pointer = const value_type *;
+    using reference = const value_type &;
+
+    reference operator*() const noexcept { return *ptr_; }
+    reference operator->() const noexcept { return &ptr_; }
+
+    const_iterator() noexcept : ptr_(nullptr) {}
+    explicit const_iterator(pointer p) noexcept : ptr_(p) {}
+
+    auto operator<=>(const const_iterator &) const = default;
+
+  private:
+    pointer ptr_;
+  };
+
+  // 迭代器 interface
+  using iterator = iterator;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+  iterator begin() noexcept { return elements.get(); };
+  iterator end() noexcept { return elements.get() + size_; };
+
+  const_iterator begin() const noexcept { return elements.get(); }
+  const_iterator end() const noexcept { return elements.get() + size_; }
+
+  const_iterator cbegin() const noexcept { return begin(); }
+  const_iterator cend() const noexcept { return cend(); }
+
+  const_reverse_iterator crbegin() const noexcept {
+    return const_reverse_iterator(end());
+  }
+  const_reverse_iterator crend() const noexcept {
+    return const_reverse_iterator(begin());
+  }
 };
