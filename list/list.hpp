@@ -196,14 +196,34 @@ public:
   };
 
   //  Member function
-  reference front();
-  const_reference front() const;
+  reference front() {
+    if (empty()) {
+      throw std::out_of_range("MyList::front on empty list");
+    }
+    return head_->value;
+  };
+  const_reference front() const {
+    if (empty()) {
+      throw std::out_of_range("MyList::front on empty list");
+    }
+    return head_->value;
+  };
 
-  reference back();
-  const_reference back() const;
+  reference back() {
+    if (empty()) {
+      throw std::out_of_range("MyList::front on empty list");
+    }
+    return tail_->value;
+  };
+  const_reference back() const {
+    if (empty()) {
+      throw std::out_of_range("MyList::front on empty list");
+    }
+    return tail_->value;
+  };
 
-  bool empty() const noexcept;
-  size_type size() const noexcept;
+  bool empty() const noexcept { return size_ == 0; };
+  size_type size() const noexcept { return size_; };
 
   void clear() noexcept {
     Node *cur = head_;
@@ -217,17 +237,125 @@ public:
     size_ = 0;
   };
 
-  void push_back(const T &value);
-  void push_back(T &&value);
+  void push_back(const T &value) {
+    Node *node = new Node(tail_, nullptr, value);
 
-  void push_front(const T &value);
-  void push_front(T &&value);
+    if (empty()) {
+      head_ = tail_ = node;
+    } else {
+      tail_->next = node;
+      tail_ = node;
+    }
 
-  void pop_back();
-  void pop_front();
+    ++size_;
+  };
+  void push_back(T &&value) {
 
-  void remove();
-  void get();
+  };
+
+  void push_front(const T &value) {
+    Node *node = new Node(nullptr, head_, value);
+    if (empty()) {
+      head_ = tail_ = node;
+    } else {
+      head_->prev = node;
+      head_ = node;
+    }
+
+    ++size_;
+  };
+  void push_front(T &&value) {
+
+  };
+
+  void pop_back() {
+    if (empty()) {
+      throw std::out_of_range("MyList::pop_back");
+    }
+    Node *old = tail_;
+
+    if (size_ == 1) {
+      head_ = tail_ = nullptr;
+    } else {
+      tail_ = tail_->prev;
+      tail_->next = nullptr;
+    }
+
+    delete old;
+    --size_;
+  };
+  void pop_front() {
+    if (empty()) {
+      throw std::out_of_range("MyList::pop_front");
+    }
+    Node *old = head_;
+
+    if (size_ == 1) {
+      head_ = tail_ = nullptr;
+    } else {
+      head_ = head_->next;
+      head_->prev = nullptr;
+    }
+
+    delete old;
+    --size_;
+  };
+
+  void remove(const T &value) {
+    Node *cur = head_;
+    while (cur) {
+      Node *next = cur->next;
+      if (cur->value == value) {
+        // 1
+        if (cur == head_) {
+          head_ = cur->next;
+          if (head_) {
+            head_->prev = nullptr;
+          } else {
+            // 链表变空
+            tail_ = nullptr;
+          }
+        }
+        // 2
+        else if (cur == tail_) {
+          tail_ = cur->prev;
+          tail_->next = nullptr;
+        }
+        // 3
+        else {
+          cur->prev->next = cur->next;
+          cur->next->prev = cur->prev;
+        }
+
+        delete cur;
+        --size_;
+      }
+      cur = next;
+    }
+  };
+
+  T &get(size_type index) {
+    if (index >= size_) {
+      throw std::out_of_range("MyList::get index out of range");
+    }
+    Node *cur = head_;
+    for (size_type i = 0; i < index; ++i) {
+      cur = cur->next;
+    }
+    return cur->value;
+  };
+  const T &get(size_type index) const {
+    if (index >= size_) {
+      throw std::out_of_range("MyList::get index out of range");
+    }
+
+    Node *cur = head_;
+    for (size_type i = 0; i < index; ++i) {
+      cur = cur->next;
+    }
+    return cur->value;
+  }
+
   void print();
 
   iterator insert(const_iterator pos, const T &value);
