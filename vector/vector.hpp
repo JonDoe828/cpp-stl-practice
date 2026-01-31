@@ -34,6 +34,12 @@ private:
   }
 
 public:
+  using value_type = T;
+  using size_type = std::size_t;
+  using reference = T &;
+  using const_reference = const T &;
+  using pointer = T *;
+  using const_pointer = const T *;
   // 构造函数
   // default user provied constructor
   MyVector() : elements(nullptr), capacity_(0), size_(0) {};
@@ -153,6 +159,18 @@ public:
     }
     std::cout << std::endl;
   }
+
+  // at
+  T &at(std::size_t pos) {
+    if (pos >= size_)
+      throw std::out_of_range("SmartContainer::at out of range");
+    return elements[pos];
+  };
+  const T &at(std::size_t pos) const {
+    if (pos >= size_)
+      throw std::out_of_range("SmartContainer::at out of range");
+    return elements[pos];
+  };
 
   class iterator {
   public:
