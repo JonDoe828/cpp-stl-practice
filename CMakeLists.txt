@@ -31,3 +31,8 @@ foreach(test_file ${TEST_FILES})
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
   )
 endforeach()
+
+# === add app target (just for main) ===
+add_executable(app list/list.cpp)
+target_include_directories(app PRIVATE ${CMAKE_SOURCE_DIR}/list)
+

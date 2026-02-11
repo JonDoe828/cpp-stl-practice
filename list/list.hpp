@@ -8,8 +8,10 @@ private:
     Node *next;
     T value;
 
-    Node(const T &v) : prev(nullptr), next(nullptr), value(v) {}
-    Node(T &&v) : prev(nullptr), next(nullptr), value(std::move(v)) {}
+    Node(Node *prev, Node *next, const T &v)
+        : prev(nullptr), next(nullptr), value(v) {}
+    Node(Node *prev, Node *next, T &&v)
+        : prev(nullptr), next(nullptr), value(std::move(v)) {}
   };
 
   void swap(MyList &other) noexcept {
@@ -244,13 +246,24 @@ public:
       head_ = tail_ = node;
     } else {
       tail_->next = node;
+      node->prev = tail_;
       tail_ = node;
     }
 
     ++size_;
   };
   void push_back(T &&value) {
+    Node *node = new Node(tail_, nullptr, std::move(value));
 
+    if (empty()) {
+      head_ = tail_ = node;
+    } else {
+      tail_->next = node;
+      node->prev = tail_;
+      tail_ = node;
+    }
+
+    ++size_;
   };
 
   void push_front(const T &value) {
@@ -259,13 +272,23 @@ public:
       head_ = tail_ = node;
     } else {
       head_->prev = node;
+      node->next = head_;
       head_ = node;
     }
 
     ++size_;
   };
   void push_front(T &&value) {
+    Node *node = new Node(nullptr, head_, std::move(value));
+    if (empty()) {
+      head_ = tail_ = node;
+    } else {
+      head_->prev = node;
+      node->next = head_;
+      head_ = node;
+    }
 
+    ++size_;
   };
 
   void pop_back() {
