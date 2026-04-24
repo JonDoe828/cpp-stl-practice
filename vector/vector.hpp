@@ -6,7 +6,9 @@
 #include <stdexcept>
 #include <utility>
 
-template <typename T> class MyVector {
+namespace my_stl {
+
+template <typename T> class vector {
 private:
   std::unique_ptr<T[]> elements; // 指向动态数组的指针
   size_t capacity_;              // 数组的容量
@@ -27,7 +29,7 @@ private:
     capacity_ = new_cap;
   }
 
-  void swap(MyVector &other) noexcept {
+  void swap(vector &other) noexcept {
     std::swap(elements, other.elements);
     std::swap(size_, other.size_);
     std::swap(capacity_, other.capacity_);
@@ -42,9 +44,9 @@ public:
   using const_pointer = const T *;
   // 构造函数
   // default user provied constructor
-  MyVector() : elements(nullptr), capacity_(0), size_(0) {};
+  vector() : elements(nullptr), capacity_(0), size_(0) {};
 
-  MyVector(std::initializer_list<T> ilist)
+  vector(std::initializer_list<T> ilist)
       : elements(std::make_unique<T[]>(ilist.size())), size_(ilist.size()),
         capacity_(ilist.size()) {
     std::size_t i = 0;
@@ -54,11 +56,10 @@ public:
   };
 
   // 析构函数
-  ~MyVector() = default;
+  ~vector() = default;
 
   // 拷贝构造函数
-  MyVector(const MyVector &other)
-      : size_(other.size_), capacity_(other.capacity_) {
+  vector(const vector &other) : size_(other.size_), capacity_(other.capacity_) {
     if (capacity_ > 0) {
       elements = std::make_unique<T[]>(capacity_);
       std::copy(other.elements.get(), other.elements.get() + size_,
@@ -67,24 +68,24 @@ public:
   }
 
   // 拷贝赋值操作符
-  MyVector &operator=(const MyVector &other) {
+  vector &operator=(const vector &other) {
     if (this == &other)
       return *this;
 
-    MyVector tmp(other); // 复用拷贝构造
-    swap(tmp);           // 交换资源
+    vector tmp(other); // 复用拷贝构造
+    swap(tmp);         // 交换资源
     return *this;
   }
 
   // Move constructor
-  MyVector(MyVector &&other) noexcept
+  vector(vector &&other) noexcept
       : elements(std::exchange(other.elements, std::unique_ptr<T[]>{})),
         size_(std::exchange(other.size_, 0)),
         capacity_(std::exchange(other.capacity_, 0)) {}
 
   // Move assignment
-  MyVector &operator=(MyVector &&other) {
-    if (this == other)
+  vector &operator=(vector &&other) {
+    if (this == &other)
       return *this;
 
     elements.reset();
@@ -97,17 +98,9 @@ public:
   const T &operator[](std::size_t pos) const { return elements[pos]; }
 
   // member function
-  //  添加元素到数组末尾
-  void push(const T &value) {
-    if (size_ == capacity_) {
-      // 如果数组已满，扩展容量
-      reserve(capacity_ == 0 ? 1 : 2 * capacity_);
-    }
-    elements[size_++] = value;
-  };
 
   // 删除数组末尾的元素
-  void pop() {
+  void pop_back() {
     if (size_ > 0) {
       --size_;
     }
@@ -145,12 +138,32 @@ public:
   // 获取数组的容量
   size_t capacity() const { return capacity_; }
 
-  int get(int index) const {
-    if (index < 0 || static_cast<size_t>(index) >= size_) {
-      return -1;
-    }
-    return elements[index];
-  };
+  bool empty() const noexcept { return size_ == 0; }
+
+  reference front() {
+    if (empty())
+      throw std::out_of_range("vector::front on empty vector");
+    return elements[0];
+  }
+  const_reference front() const {
+    if (empty())
+      throw std::out_of_range("vector::front on empty vector");
+    return elements[0];
+  }
+
+  reference back() {
+    if (empty())
+      throw std::out_of_range("vector::back on empty vector");
+    return elements[size_ - 1];
+  }
+  const_reference back() const {
+    if (empty())
+      throw std::out_of_range("vector::back on empty vector");
+    return elements[size_ - 1];
+  }
+
+  pointer data() noexcept { return elements.get(); }
+  const_pointer data() const noexcept { return elements.get(); }
 
   // 打印数组中的元素
   void printElements() const {
@@ -172,7 +185,11 @@ public:
     return elements[pos];
   };
 
+  class const_iterator;
+
   class iterator {
+    friend class const_iterator;
+
   public:
     using iterator_category = std::random_access_iterator_tag;
     using difference_type = std::ptrdiff_t;
@@ -244,6 +261,7 @@ public:
 
     const_iterator() noexcept : ptr_(nullptr) {}
     explicit const_iterator(pointer p) noexcept : ptr_(p) {}
+    const_iterator(const iterator &other) noexcept : ptr_(other.ptr_) {}
 
     reference operator*() const noexcept { return *ptr_; }
     pointer operator->() const noexcept { return ptr_; }
@@ -289,19 +307,19 @@ public:
   // 迭代器 interface
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  iterator begin() noexcept { return iterator(elements.get()); };
-  iterator end() noexcept { return iterator(elements.get() + size_); };
+  iterator begin() noexcept { return iterator(data()); };
+  iterator end() noexcept {
+    pointer p = data();
+    return iterator(size_ == 0 ? p : p + size_);
+  };
 
-  const_iterator begin() const noexcept {
-    return const_iterator(elements.get());
-  }
+  const_iterator begin() const noexcept { return const_iterator(data()); }
   const_iterator end() const noexcept {
-    return const_iterator(elements.get() + size_);
+    const_pointer p = data();
+    return const_iterator(size_ == 0 ? p : p + size_);
   }
 
-  const_iterator cbegin() const noexcept {
-    return const_iterator(elements.get());
-  }
+  const_iterator cbegin() const noexcept { return const_iterator(data()); }
   const_iterator cend() const noexcept { return end(); }
 
   const_reverse_iterator crbegin() const noexcept {
@@ -310,4 +328,23 @@ public:
   const_reverse_iterator crend() const noexcept {
     return const_reverse_iterator(begin());
   }
+
+  iterator erase(const_iterator pos) { return erase(pos, pos + 1); }
+  iterator erase(const_iterator first, const_iterator last) {
+    size_type first_index = first - cbegin();
+    size_type last_index = last - cbegin();
+    size_type count = last_index - first_index;
+
+    if (count == 0) {
+      return begin() + static_cast<std::ptrdiff_t>(first_index);
+    }
+
+    for (size_type i = first_index; i + count < size_; ++i) {
+      elements[i] = std::move(elements[i + count]);
+    }
+
+    size_ -= count;
+    return begin() + static_cast<std::ptrdiff_t>(first_index);
+  }
 };
+} // namespace my_stl
