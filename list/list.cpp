@@ -6,7 +6,7 @@
 int main() {
   {
     std::cout << "=== Basic push_back / front / back ===\n";
-    MyList<int> lst;
+    my_stl::list<int> lst;
     assert(lst.empty());
     assert(lst.size() == 0);
 
@@ -25,7 +25,7 @@ int main() {
 
   {
     std::cout << "=== push_front ===\n";
-    MyList<int> lst;
+    my_stl::list<int> lst;
     lst.push_front(2);
     lst.push_front(1);
     lst.push_front(0);
@@ -37,7 +37,7 @@ int main() {
 
   {
     std::cout << "=== pop_front ===\n";
-    MyList<int> lst;
+    my_stl::list<int> lst;
     lst.push_back(1);
     lst.push_back(2);
     lst.push_back(3);
@@ -56,7 +56,7 @@ int main() {
 
   {
     std::cout << "=== pop_back ===\n";
-    MyList<int> lst;
+    my_stl::list<int> lst;
     lst.push_back(1);
     lst.push_back(2);
     lst.push_back(3);
@@ -75,7 +75,7 @@ int main() {
 
   {
     std::cout << "=== remove(value) ===\n";
-    MyList<int> lst;
+    my_stl::list<int> lst;
     lst.push_back(1);
     lst.push_back(2);
     lst.push_back(2);
@@ -90,7 +90,7 @@ int main() {
 
   {
     std::cout << "=== remove all ===\n";
-    MyList<int> lst;
+    my_stl::list<int> lst;
     lst.push_back(5);
     lst.push_back(5);
     lst.push_back(5);
@@ -101,11 +101,11 @@ int main() {
 
   {
     std::cout << "=== copy constructor ===\n";
-    MyList<int> a;
+    my_stl::list<int> a;
     a.push_back(1);
     a.push_back(2);
 
-    MyList<int> b(a); // copy ctor
+    my_stl::list<int> b(a); // copy ctor
     assert(b.size() == 2);
     assert(b.front() == 1);
     assert(b.back() == 2);
@@ -116,11 +116,11 @@ int main() {
 
   {
     std::cout << "=== copy assignment ===\n";
-    MyList<int> a;
+    my_stl::list<int> a;
     a.push_back(1);
     a.push_back(2);
 
-    MyList<int> b;
+    my_stl::list<int> b;
     b.push_back(9);
 
     b = a;
@@ -131,11 +131,11 @@ int main() {
 
   {
     std::cout << "=== move constructor ===\n";
-    MyList<int> a;
+    my_stl::list<int> a;
     a.push_back(1);
     a.push_back(2);
 
-    MyList<int> b(std::move(a));
+    my_stl::list<int> b(std::move(a));
     assert(b.size() == 2);
     assert(b.front() == 1);
     assert(b.back() == 2);
@@ -144,11 +144,11 @@ int main() {
 
   {
     std::cout << "=== move assignment ===\n";
-    MyList<int> a;
+    my_stl::list<int> a;
     a.push_back(1);
     a.push_back(2);
 
-    MyList<int> b;
+    my_stl::list<int> b;
     b.push_back(9);
 
     b = std::move(a);
