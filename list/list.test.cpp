@@ -4,6 +4,14 @@
 #include <stdexcept>
 #include <utility>
 
+namespace {
+struct NoDefault {
+  int value;
+
+  explicit NoDefault(int value) : value(value) {}
+};
+} // namespace
+
 TEST_CASE("basic", "[list]") {
   my_stl::list<int> lst;
   lst.push_back(1);
@@ -20,6 +28,21 @@ TEST_CASE("rvalue push_back makes list non-empty", "[list]") {
   REQUIRE(lst.size() == 1);
   REQUIRE(lst.front() == 1);
   REQUIRE(lst.back() == 1);
+}
+
+TEST_CASE("sentinel node does not require default-constructible values",
+          "[list]") {
+  my_stl::list<NoDefault> lst;
+  REQUIRE(lst.empty());
+
+  NoDefault one(1);
+  lst.push_back(one);
+  lst.push_front(NoDefault(0));
+
+  REQUIRE(lst.size() == 2);
+  REQUIRE(lst.front().value == 0);
+  REQUIRE(lst.back().value == 1);
+  REQUIRE(lst.begin()->value == 0);
 }
 
 TEST_CASE("constructors copy and move preserve list contents", "[list]") {
@@ -57,6 +80,28 @@ TEST_CASE("constructors copy and move preserve list contents", "[list]") {
   REQUIRE(move_assigned.size() == 3);
   REQUIRE(move_assigned.get(1) == 2);
   REQUIRE(moved.empty());
+}
+
+TEST_CASE("swap exchanges list contents", "[list]") {
+  my_stl::list<int> first{1, 2, 3};
+  my_stl::list<int> second{8, 9};
+
+  first.swap(second);
+
+  REQUIRE(first.size() == 2);
+  REQUIRE(first.front() == 8);
+  REQUIRE(first.back() == 9);
+  REQUIRE(second.size() == 3);
+  REQUIRE(second.front() == 1);
+  REQUIRE(second.back() == 3);
+
+  my_stl::list<int> empty;
+  first.swap(empty);
+
+  REQUIRE(first.empty());
+  REQUIRE(empty.size() == 2);
+  REQUIRE(empty.front() == 8);
+  REQUIRE(empty.back() == 9);
 }
 
 TEST_CASE("iterators walk forward and backward", "[list]") {

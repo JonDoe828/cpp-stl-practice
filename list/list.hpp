@@ -12,15 +12,21 @@ namespace my_stl {
 
 template <typename T> class list {
 private:
-  struct Node {
-    Node *prev;
-    Node *next;
+  struct NodeBase {
+    NodeBase *prev;
+    NodeBase *next;
+
+    NodeBase() noexcept : prev(this), next(this) {}
+    NodeBase(NodeBase *prev, NodeBase *next) noexcept
+        : prev(prev), next(next) {}
+  };
+
+  struct Node : NodeBase {
     T value;
 
-    Node(Node *prev, Node *next, const T &value)
-        : prev(prev), next(next), value(value) {}
-    Node(Node *prev, Node *next, T &&value)
-        : prev(prev), next(next), value(std::move(value)) {}
+    explicit Node(const T &value) : NodeBase(nullptr, nullptr), value(value) {}
+    explicit Node(T &&value)
+        : NodeBase(nullptr, nullptr), value(std::move(value)) {}
   };
 
 public:
@@ -44,8 +50,12 @@ public:
 
     iterator() noexcept = default;
 
-    reference operator*() const noexcept { return node_->value; }
-    pointer operator->() const noexcept { return std::addressof(node_->value); }
+    reference operator*() const noexcept {
+      return static_cast<Node *>(node_)->value;
+    }
+    pointer operator->() const noexcept {
+      return std::addressof(static_cast<Node *>(node_)->value);
+    }
 
     iterator &operator++() noexcept {
       node_ = node_->next;
@@ -58,7 +68,7 @@ public:
     }
 
     iterator &operator--() noexcept {
-      node_ = node_ == nullptr ? owner_->tail_ : node_->prev;
+      node_ = node_->prev;
       return *this;
     }
     iterator operator--(int) noexcept {
@@ -68,17 +78,16 @@ public:
     }
 
     bool operator==(const iterator &other) const noexcept {
-      return owner_ == other.owner_ && node_ == other.node_;
+      return node_ == other.node_;
     }
     bool operator!=(const iterator &other) const noexcept {
       return !(*this == other);
     }
 
   private:
-    list *owner_{nullptr};
-    Node *node_{nullptr};
+    NodeBase *node_{nullptr};
 
-    iterator(list *owner, Node *node) noexcept : owner_(owner), node_(node) {}
+    explicit iterator(NodeBase *node) noexcept : node_(node) {}
 
     friend class list;
     friend class const_iterator;
@@ -93,11 +102,14 @@ public:
     using reference = const T &;
 
     const_iterator() noexcept = default;
-    const_iterator(const iterator &it) noexcept
-        : owner_(it.owner_), node_(it.node_) {}
+    const_iterator(const iterator &it) noexcept : node_(it.node_) {}
 
-    reference operator*() const noexcept { return node_->value; }
-    pointer operator->() const noexcept { return std::addressof(node_->value); }
+    reference operator*() const noexcept {
+      return static_cast<const Node *>(node_)->value;
+    }
+    pointer operator->() const noexcept {
+      return std::addressof(static_cast<const Node *>(node_)->value);
+    }
 
     const_iterator &operator++() noexcept {
       node_ = node_->next;
@@ -110,7 +122,7 @@ public:
     }
 
     const_iterator &operator--() noexcept {
-      node_ = node_ == nullptr ? owner_->tail_ : node_->prev;
+      node_ = node_->prev;
       return *this;
     }
     const_iterator operator--(int) noexcept {
@@ -120,13 +132,13 @@ public:
     }
 
     bool operator==(const const_iterator &other) const noexcept {
-      return owner_ == other.owner_ && node_ == other.node_;
+      return node_ == other.node_;
     }
     bool operator!=(const const_iterator &other) const noexcept {
       return !(*this == other);
     }
     bool operator==(const iterator &other) const noexcept {
-      return owner_ == other.owner_ && node_ == other.node_;
+      return node_ == other.node_;
     }
     bool operator!=(const iterator &other) const noexcept {
       return !(*this == other);
@@ -142,11 +154,9 @@ public:
     }
 
   private:
-    const list *owner_{nullptr};
-    Node *node_{nullptr};
+    const NodeBase *node_{nullptr};
 
-    const_iterator(const list *owner, Node *node) noexcept
-        : owner_(owner), node_(node) {}
+    explicit const_iterator(const NodeBase *node) noexcept : node_(node) {}
 
     friend class list;
   };
@@ -194,10 +204,7 @@ public:
     return *this;
   }
 
-  list(list &&other) noexcept
-      : head_(std::exchange(other.head_, nullptr)),
-        tail_(std::exchange(other.tail_, nullptr)),
-        size_(std::exchange(other.size_, 0)) {}
+  list(list &&other) noexcept : list() { move_from(other); }
 
   list &operator=(list &&other) noexcept {
     if (this == &other) {
@@ -205,9 +212,7 @@ public:
     }
 
     clear();
-    head_ = std::exchange(other.head_, nullptr);
-    tail_ = std::exchange(other.tail_, nullptr);
-    size_ = std::exchange(other.size_, 0);
+    move_from(other);
     return *this;
   }
 
@@ -217,11 +222,13 @@ public:
     return *this;
   }
 
-  iterator begin() noexcept { return iterator(this, head_); }
-  iterator end() noexcept { return iterator(this, nullptr); }
+  iterator begin() noexcept { return iterator(sentinel_.next); }
+  iterator end() noexcept { return iterator(&sentinel_); }
 
-  const_iterator begin() const noexcept { return const_iterator(this, head_); }
-  const_iterator end() const noexcept { return const_iterator(this, nullptr); }
+  const_iterator begin() const noexcept {
+    return const_iterator(sentinel_.next);
+  }
+  const_iterator end() const noexcept { return const_iterator(&sentinel_); }
 
   const_iterator cbegin() const noexcept { return begin(); }
   const_iterator cend() const noexcept { return end(); }
@@ -246,56 +253,55 @@ public:
     if (empty()) {
       throw std::out_of_range("list::front on empty list");
     }
-    return head_->value;
+    return static_cast<Node *>(sentinel_.next)->value;
   }
   const_reference front() const {
     if (empty()) {
       throw std::out_of_range("list::front on empty list");
     }
-    return head_->value;
+    return static_cast<const Node *>(sentinel_.next)->value;
   }
 
   reference back() {
     if (empty()) {
       throw std::out_of_range("list::back on empty list");
     }
-    return tail_->value;
+    return static_cast<Node *>(sentinel_.prev)->value;
   }
   const_reference back() const {
     if (empty()) {
       throw std::out_of_range("list::back on empty list");
     }
-    return tail_->value;
+    return static_cast<const Node *>(sentinel_.prev)->value;
   }
 
   bool empty() const noexcept { return size_ == 0; }
   size_type size() const noexcept { return size_; }
 
   void clear() noexcept {
-    Node *cur = head_;
-    while (cur != nullptr) {
-      Node *next = cur->next;
-      delete cur;
+    NodeBase *cur = sentinel_.next;
+    while (cur != &sentinel_) {
+      NodeBase *next = cur->next;
+      delete static_cast<Node *>(cur);
       cur = next;
     }
 
-    head_ = nullptr;
-    tail_ = nullptr;
+    reset_sentinel();
     size_ = 0;
   }
 
   void push_back(const T &value) {
-    insert_node_before(nullptr, new Node(nullptr, nullptr, value));
+    insert_node_before(&sentinel_, new Node(value));
   }
   void push_back(T &&value) {
-    insert_node_before(nullptr, new Node(nullptr, nullptr, std::move(value)));
+    insert_node_before(&sentinel_, new Node(std::move(value)));
   }
 
   void push_front(const T &value) {
-    insert_node_before(head_, new Node(nullptr, nullptr, value));
+    insert_node_before(sentinel_.next, new Node(value));
   }
   void push_front(T &&value) {
-    insert_node_before(head_, new Node(nullptr, nullptr, std::move(value)));
+    insert_node_before(sentinel_.next, new Node(std::move(value)));
   }
 
   void pop_back() {
@@ -303,10 +309,7 @@ public:
       throw std::out_of_range("list::pop_back on empty list");
     }
 
-    Node *old = tail_;
-    unlink_node(old);
-    delete old;
-    --size_;
+    erase_node(sentinel_.prev);
   }
 
   void pop_front() {
@@ -314,21 +317,16 @@ public:
       throw std::out_of_range("list::pop_front on empty list");
     }
 
-    Node *old = head_;
-    unlink_node(old);
-    delete old;
-    --size_;
+    erase_node(sentinel_.next);
   }
 
   void remove(const T &value) {
-    Node *cur = head_;
-    while (cur != nullptr) {
-      Node *next = cur->next;
+    NodeBase *cur = sentinel_.next;
+    while (cur != &sentinel_) {
+      NodeBase *next = cur->next;
 
-      if (cur->value == value) {
-        unlink_node(cur);
-        delete cur;
-        --size_;
+      if (static_cast<Node *>(cur)->value == value) {
+        erase_node(cur);
       }
 
       cur = next;
@@ -339,19 +337,19 @@ public:
     if (index >= size_) {
       throw std::out_of_range("list::get index out of range");
     }
-    return node_at(index)->value;
+    return static_cast<Node *>(node_at(index))->value;
   }
   const_reference get(size_type index) const {
     if (index >= size_) {
       throw std::out_of_range("list::get index out of range");
     }
-    return node_at(index)->value;
+    return static_cast<const Node *>(node_at(index))->value;
   }
 
   void print() {
-    for (Node *cur = head_; cur != nullptr; cur = cur->next) {
-      std::cout << cur->value;
-      if (cur->next != nullptr) {
+    for (NodeBase *cur = sentinel_.next; cur != &sentinel_; cur = cur->next) {
+      std::cout << static_cast<Node *>(cur)->value;
+      if (cur->next != &sentinel_) {
         std::cout << ' ';
       }
     }
@@ -359,136 +357,140 @@ public:
   }
 
   iterator insert(const_iterator pos, const T &value) {
-    validate_position(pos, "list::insert position out of range");
-    Node *node = new Node(nullptr, nullptr, value);
-    insert_node_before(pos.node_, node);
-    return iterator(this, node);
+    Node *node = new Node(value);
+    insert_node_before(mutable_node(pos), node);
+    return iterator(node);
   }
   iterator insert(const_iterator pos, T &&value) {
-    validate_position(pos, "list::insert position out of range");
-    Node *node = new Node(nullptr, nullptr, std::move(value));
-    insert_node_before(pos.node_, node);
-    return iterator(this, node);
+    Node *node = new Node(std::move(value));
+    insert_node_before(mutable_node(pos), node);
+    return iterator(node);
   }
 
   iterator erase(const_iterator pos) {
-    validate_position(pos, "list::erase position out of range");
-    if (pos.node_ == nullptr) {
+    NodeBase *node = mutable_node(pos);
+    if (node == &sentinel_) {
       throw std::out_of_range("list::erase cannot erase end");
     }
 
-    Node *next = pos.node_->next;
-    unlink_node(pos.node_);
-    delete pos.node_;
-    --size_;
-    return iterator(this, next);
+    NodeBase *next = node->next;
+    erase_node(node);
+    return iterator(next);
   }
 
   iterator erase(const_iterator first, const_iterator last) {
-    validate_position(first, "list::erase range out of range");
-    validate_position(last, "list::erase range out of range");
+    NodeBase *finish = mutable_node(last);
+    NodeBase *cur = mutable_node(first);
 
-    size_type count = 0;
-    for (Node *cur = first.node_; cur != last.node_; cur = cur->next) {
-      if (cur == nullptr) {
+    while (cur != finish) {
+      if (cur == &sentinel_) {
         throw std::out_of_range("list::erase range out of range");
       }
-      ++count;
-    }
 
-    Node *cur = first.node_;
-    while (cur != last.node_) {
-      Node *next = cur->next;
-      unlink_node(cur);
-      delete cur;
+      NodeBase *next = cur->next;
+      erase_node(cur);
       cur = next;
     }
 
-    size_ -= count;
-    return iterator(this, last.node_);
+    return iterator(finish);
   }
 
   void swap(list &other) noexcept {
-    std::swap(head_, other.head_);
-    std::swap(tail_, other.tail_);
+    if (this == &other) {
+      return;
+    }
+
+    std::swap(sentinel_.next, other.sentinel_.next);
+    std::swap(sentinel_.prev, other.sentinel_.prev);
     std::swap(size_, other.size_);
+
+    fix_sentinel_links();
+    other.fix_sentinel_links();
   }
 
 private:
-  Node *head_{nullptr};
-  Node *tail_{nullptr};
+  NodeBase sentinel_;
   size_type size_{0};
 
-  void insert_node_before(Node *pos, Node *node) noexcept {
+  void reset_sentinel() noexcept {
+    sentinel_.next = &sentinel_;
+    sentinel_.prev = &sentinel_;
+  }
+
+  void fix_sentinel_links() noexcept {
+    if (empty()) {
+      reset_sentinel();
+      return;
+    }
+
+    sentinel_.next->prev = &sentinel_;
+    sentinel_.prev->next = &sentinel_;
+  }
+
+  void move_from(list &other) noexcept {
+    if (other.empty()) {
+      reset_sentinel();
+      size_ = 0;
+      return;
+    }
+
+    sentinel_.next = other.sentinel_.next;
+    sentinel_.prev = other.sentinel_.prev;
+    sentinel_.next->prev = &sentinel_;
+    sentinel_.prev->next = &sentinel_;
+    size_ = std::exchange(other.size_, 0);
+    other.reset_sentinel();
+  }
+
+  NodeBase *mutable_node(const_iterator pos) noexcept {
+    return const_cast<NodeBase *>(pos.node_);
+  }
+
+  void insert_node_before(NodeBase *pos, NodeBase *node) noexcept {
+    node->prev = pos->prev;
     node->next = pos;
-
-    if (pos == nullptr) {
-      node->prev = tail_;
-      tail_ = node;
-    } else {
-      node->prev = pos->prev;
-      pos->prev = node;
-    }
-
-    if (node->prev == nullptr) {
-      head_ = node;
-    } else {
-      node->prev->next = node;
-    }
-
+    pos->prev->next = node;
+    pos->prev = node;
     ++size_;
   }
 
-  void unlink_node(Node *node) noexcept {
-    if (node->prev == nullptr) {
-      head_ = node->next;
-    } else {
-      node->prev->next = node->next;
-    }
-
-    if (node->next == nullptr) {
-      tail_ = node->prev;
-    } else {
-      node->next->prev = node->prev;
-    }
+  void erase_node(NodeBase *node) noexcept {
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+    delete static_cast<Node *>(node);
+    --size_;
   }
 
-  Node *node_at(size_type index) noexcept {
+  NodeBase *node_at(size_type index) noexcept {
     if (index < size_ / 2) {
-      Node *cur = head_;
+      NodeBase *cur = sentinel_.next;
       for (size_type i = 0; i < index; ++i) {
         cur = cur->next;
       }
       return cur;
     }
 
-    Node *cur = tail_;
+    NodeBase *cur = sentinel_.prev;
     for (size_type i = size_ - 1; i > index; --i) {
       cur = cur->prev;
     }
     return cur;
   }
 
-  const Node *node_at(size_type index) const noexcept {
+  const NodeBase *node_at(size_type index) const noexcept {
     if (index < size_ / 2) {
-      const Node *cur = head_;
+      const NodeBase *cur = sentinel_.next;
       for (size_type i = 0; i < index; ++i) {
         cur = cur->next;
       }
       return cur;
     }
 
-    const Node *cur = tail_;
+    const NodeBase *cur = sentinel_.prev;
     for (size_type i = size_ - 1; i > index; --i) {
       cur = cur->prev;
     }
     return cur;
-  }
-
-  void validate_position(const const_iterator &pos, const char *message) const {
-    if (pos.owner_ != this) {
-      throw std::out_of_range(message);
-    }
   }
 };
 
